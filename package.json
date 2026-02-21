@@ -1,0 +1,34 @@
+{
+  "name": "fetch-resilience",
+  "version": "0.1.0",
+  "description": "Composable resilience policies (retry, timeout, circuit breaker, bulkhead) for native fetch — edge-safe, zero dependencies",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --experimental-transform-types --test tests/*.test.ts",
+    "test:build": "tsc && node --test dist/tests/*.test.js"
+  },
+  "keywords": [
+    "fetch",
+    "retry",
+    "circuit-breaker",
+    "resilience",
+    "timeout",
+    "bulkhead",
+    "edge"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

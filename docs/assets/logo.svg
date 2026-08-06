@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" viewBox="0 0 800 200" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <rect width="800" height="200" rx="16" fill="#0d1117"/>
+  <rect x="0.5" y="0.5" width="799" height="199" rx="16" fill="none" stroke="#30363d"/>
+  <g transform="translate(136,38)">
+    <rect width="96" height="96" rx="24" fill="#2f81f7"/>
+    <g transform="translate(48,48) scale(0.52)" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M-52 -20 H38"/><path d="M20 -38 L38 -20 L20 -2"/><path d="M52 22 H-38"/><path d="M-20 4 L-38 22 L-20 40"/>
+    </g>
+  </g>
+  <text x="262" y="103" fill="#e6edf3" font-size="48" font-weight="800" letter-spacing="-1">fetch-resilience</text>
+  <text x="400" y="154" text-anchor="middle" fill="#8b949e" font-size="16" font-weight="500">Composable resilience policies (retry, timeout, circuit breaker, bulkhead) fo…</text>
+</svg>

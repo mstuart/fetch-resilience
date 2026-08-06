@@ -1,5 +1,14 @@
-# fetch-resilience
+<div align="center">
+  <img src="docs/assets/logo.svg" alt="fetch-resilience — Composable resilience policies (retry, timeout, circuit breaker, bulkhead) for native fetch — edge-safe, zero dependencies" width="720">
+</div>
 
+<p align="center"><strong>Composable resilience policies (retry, timeout, circuit breaker, bulkhead) for native fetch — edge-safe, zero dependencies</strong></p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/fetch-resilience"><img src="https://img.shields.io/npm/v/fetch-resilience?label=npm" alt="npm"></a>
+</p>
+
+---
 Composable resilience policies for native `fetch` and any async function. Inspired by [Polly](https://github.com/App-vNext/Polly) and [Cockatiel](https://github.com/connor4312/cockatiel), but built from scratch with modern constraints in mind.
 
 - **Zero dependencies** — pure TypeScript, nothing to audit

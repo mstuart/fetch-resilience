@@ -5,6 +5,7 @@
 <p align="center"><strong>Composable resilience policies (retry, timeout, circuit breaker, bulkhead) for native fetch — edge-safe, zero dependencies</strong></p>
 
 <p align="center">
+  <a href="https://github.com/mstuart/fetch-resilience/actions/workflows/ci.yml"><img src="https://github.com/mstuart/fetch-resilience/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.npmjs.com/package/fetch-resilience"><img src="https://img.shields.io/npm/v/fetch-resilience?label=npm" alt="npm"></a>
 </p>
 

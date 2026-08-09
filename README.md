@@ -7,6 +7,8 @@
 <p align="center">
   <a href="https://github.com/mstuart/fetch-resilience/actions/workflows/ci.yml"><img src="https://github.com/mstuart/fetch-resilience/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.npmjs.com/package/fetch-resilience"><img src="https://img.shields.io/npm/v/fetch-resilience?label=npm" alt="npm"></a>
+  <a href="https://deepwiki.com/mstuart/fetch-resilience"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://socket.dev/npm/package/fetch-resilience"><img src="https://socket.dev/api/badge/npm/package/fetch-resilience" alt="Socket"></a>
 </p>
 
 ---

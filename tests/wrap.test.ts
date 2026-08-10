@@ -1,35 +1,39 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
-import { wrap } from '../src/wrap.ts';
-import { retry } from '../src/policies/retry.ts';
-import { timeout, TimeoutError } from '../src/policies/timeout.ts';
-import { circuitBreaker } from '../src/policies/circuit-breaker.ts';
-import { bulkhead } from '../src/policies/bulkhead.ts';
-import type { Policy } from '../src/types.ts';
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { bulkhead } from "../src/policies/bulkhead.ts";
+import { circuitBreaker } from "../src/policies/circuit-breaker.ts";
+import { retry } from "../src/policies/retry.ts";
+import { TimeoutError, timeout } from "../src/policies/timeout.ts";
+import type { Policy } from "../src/types.ts";
+import { wrap } from "../src/wrap.ts";
 
 function mockResponse(status: number): Response {
-  return { status, ok: status >= 200 && status < 300 } as Response;
+  return { ok: status >= 200 && status < 300, status } as Response;
 }
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-describe('wrap', () => {
-  it('wraps a function with a single policy', async () => {
-    const mockFetch = async (url: string) => mockResponse(200);
-    const resilientFetch = wrap(mockFetch, [retry({ attempts: 2, delayMs: 1 })]);
+describe("wrap", () => {
+  it("wraps a function with a single policy", async () => {
+    const mockFetch = (_url: string) => Promise.resolve(mockResponse(200));
+    const resilientFetch = wrap(mockFetch, [
+      retry({ attempts: 2, delayMs: 1 }),
+    ]);
 
-    const result = await resilientFetch('https://example.com');
+    const result = await resilientFetch("https://example.com");
     assert.equal(result.status, 200);
   });
 
-  it('composes timeout + retry correctly', async () => {
+  it("composes timeout + retry correctly", async () => {
     let callCount = 0;
-    const mockFetch = async (url: string) => {
-      callCount++;
-      if (callCount < 3) return mockResponse(500);
-      return mockResponse(200);
+    const mockFetch = (_url: string) => {
+      callCount += 1;
+      if (callCount < 3) {
+        return Promise.resolve(mockResponse(500));
+      }
+      return Promise.resolve(mockResponse(200));
     };
 
     // timeout wraps retry wraps fetch
@@ -38,12 +42,12 @@ describe('wrap', () => {
       retry({ attempts: 3, delayMs: 1 }),
     ]);
 
-    const result = await resilientFetch('https://example.com');
+    const result = await resilientFetch("https://example.com");
     assert.equal(result.status, 200);
     assert.equal(callCount, 3);
   });
 
-  it('timeout fires even with retries happening', async () => {
+  it("timeout fires even with retries happening", async () => {
     const mockFetch = async () => {
       await delay(100);
       return mockResponse(500);
@@ -61,65 +65,77 @@ describe('wrap', () => {
       (err: unknown) => {
         assert.ok(err instanceof TimeoutError);
         return true;
-      },
+      }
     );
   });
 
-  it('applies policies in correct order (outer to inner)', async () => {
+  it("applies policies in correct order (outer to inner)", async () => {
     const order: string[] = [];
 
     const policyA: Policy = {
       async execute(fn) {
-        order.push('A-before');
+        order.push("A-before");
         const result = await fn();
-        order.push('A-after');
+        order.push("A-after");
         return result;
       },
     };
 
     const policyB: Policy = {
       async execute(fn) {
-        order.push('B-before');
+        order.push("B-before");
         const result = await fn();
-        order.push('B-after');
+        order.push("B-after");
         return result;
       },
     };
 
-    const mockFetch = async () => {
-      order.push('fetch');
-      return mockResponse(200);
+    const mockFetch = () => {
+      order.push("fetch");
+      return Promise.resolve(mockResponse(200));
     };
 
     const wrapped = wrap(mockFetch, [policyA, policyB]);
     await wrapped();
 
-    assert.deepEqual(order, ['A-before', 'B-before', 'fetch', 'B-after', 'A-after']);
+    assert.deepEqual(order, [
+      "A-before",
+      "B-before",
+      "fetch",
+      "B-after",
+      "A-after",
+    ]);
   });
 
-  it('passes arguments through to the wrapped function', async () => {
-    const mockFetch = async (url: string, init?: { method: string }) => {
-      assert.equal(url, 'https://api.example.com');
-      assert.equal(init?.method, 'POST');
-      return mockResponse(201);
+  it("passes arguments through to the wrapped function", async () => {
+    const mockFetch = (url: string, init?: { method: string }) => {
+      assert.equal(url, "https://api.example.com");
+      assert.equal(init?.method, "POST");
+      return Promise.resolve(mockResponse(201));
     };
 
-    const resilientFetch = wrap(mockFetch, [retry({ attempts: 1, delayMs: 1 })]);
-    const result = await resilientFetch('https://api.example.com', { method: 'POST' });
+    const resilientFetch = wrap(mockFetch, [
+      retry({ attempts: 1, delayMs: 1 }),
+    ]);
+    const result = await resilientFetch("https://api.example.com", {
+      method: "POST",
+    });
     assert.equal(result.status, 201);
   });
 
-  it('composes all four policies together', async () => {
+  it("composes all four policies together", async () => {
     let callCount = 0;
-    const mockFetch = async () => {
-      callCount++;
-      if (callCount === 1) return mockResponse(500);
-      return mockResponse(200);
+    const mockFetch = () => {
+      callCount += 1;
+      if (callCount === 1) {
+        return Promise.resolve(mockResponse(500));
+      }
+      return Promise.resolve(mockResponse(200));
     };
 
     const resilientFetch = wrap(mockFetch, [
       timeout({ ms: 5000 }),
-      circuitBreaker({ threshold: 5, halfOpenAfter: 1000 }),
+      circuitBreaker({ halfOpenAfter: 1000, threshold: 5 }),
       bulkhead({ maxConcurrent: 10 }),
       retry({ attempts: 2, delayMs: 1 }),
     ]);

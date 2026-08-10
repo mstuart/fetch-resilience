@@ -1,4 +1,4 @@
-import type { Policy } from '../types.ts';
+import type { Policy } from "../types.ts";
 
 export interface BulkheadOptions {
   maxConcurrent: number;
@@ -7,19 +7,19 @@ export interface BulkheadOptions {
 
 export class BulkheadRejectedError extends Error {
   constructor() {
-    super('Bulkhead queue is full');
-    this.name = 'BulkheadRejectedError';
+    super("Bulkhead queue is full");
+    this.name = "BulkheadRejectedError";
   }
 }
 
 interface QueueEntry<T> {
   fn: () => Promise<T>;
-  resolve: (value: T) => void;
   reject: (reason: unknown) => void;
+  resolve: (value: T) => void;
 }
 
 export function bulkhead(opts: BulkheadOptions): Policy {
-  const { maxConcurrent, maxQueue = Infinity } = opts;
+  const { maxConcurrent, maxQueue = Number.POSITIVE_INFINITY } = opts;
 
   let running = 0;
   const queue: QueueEntry<Response>[] = [];
@@ -28,17 +28,20 @@ export function bulkhead(opts: BulkheadOptions): Policy {
     if (queue.length === 0 || running >= maxConcurrent) {
       return;
     }
-    const entry = queue.shift()!;
-    running++;
+    const entry = queue.shift();
+    if (!entry) {
+      return;
+    }
+    running += 1;
     entry
       .fn()
       .then((result) => {
-        running--;
+        running -= 1;
         entry.resolve(result);
         tryRunNext();
       })
       .catch((err) => {
-        running--;
+        running -= 1;
         entry.reject(err);
         tryRunNext();
       });
@@ -47,15 +50,15 @@ export function bulkhead(opts: BulkheadOptions): Policy {
   return {
     execute(fn: () => Promise<Response>): Promise<Response> {
       if (running < maxConcurrent) {
-        running++;
+        running += 1;
         return fn()
           .then((result) => {
-            running--;
+            running -= 1;
             tryRunNext();
             return result;
           })
           .catch((err) => {
-            running--;
+            running -= 1;
             tryRunNext();
             throw err;
           });
@@ -66,7 +69,7 @@ export function bulkhead(opts: BulkheadOptions): Policy {
       }
 
       return new Promise<Response>((resolve, reject) => {
-        queue.push({ fn, resolve, reject });
+        queue.push({ fn, reject, resolve });
       });
     },
   };

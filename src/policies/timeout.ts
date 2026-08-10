@@ -1,4 +1,4 @@
-import type { Policy } from '../types.ts';
+import type { Policy } from "../types.ts";
 
 export interface TimeoutOptions {
   ms: number;
@@ -7,7 +7,7 @@ export interface TimeoutOptions {
 export class TimeoutError extends Error {
   constructor(ms: number) {
     super(`Operation timed out after ${ms}ms`);
-    this.name = 'TimeoutError';
+    this.name = "TimeoutError";
   }
 }
 

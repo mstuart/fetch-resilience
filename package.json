@@ -16,7 +16,9 @@
   "scripts": {
     "build": "tsc",
     "test": "node --experimental-transform-types --test tests/*.test.ts",
-    "test:build": "tsc && node --test dist/tests/*.test.js"
+    "test:build": "tsc && node --test dist/tests/*.test.js",
+    "check": "ultracite check",
+    "fix": "ultracite fix"
   },
   "keywords": [
     "fetch",
@@ -29,7 +31,9 @@
   ],
   "license": "MIT",
   "devDependencies": {
+    "@biomejs/biome": "2.5.6",
     "@types/node": "^22.20.1",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "ultracite": "7.10.2"
   }
 }

@@ -115,6 +115,118 @@ describe("CircuitBreakerPolicy", () => {
     assert.deepEqual(states, ["open", "half-open", "closed"]);
   });
 
+  it("allows only one recovery probe while half-open", async () => {
+    const policy = circuitBreaker({ halfOpenAfter: 0, threshold: 1 });
+
+    await assert.rejects(
+      policy.execute(() => Promise.reject(new Error("failure")))
+    );
+
+    let resolveProbe!: (response: Response) => void;
+    const firstProbe = policy.execute(
+      async () =>
+        new Promise<Response>((resolve) => {
+          resolveProbe = resolve;
+        })
+    );
+
+    await assert.rejects(
+      policy.execute(async () => mockResponse(200)),
+      (error: unknown) => error instanceof CircuitOpenError
+    );
+
+    resolveProbe(mockResponse(200));
+    await firstProbe;
+  });
+
+  it("keeps the recovery probe locked when an older call fails", async () => {
+    const policy = circuitBreaker({ halfOpenAfter: 0, threshold: 1 });
+
+    let rejectOlderCall!: (error: Error) => void;
+    const olderCall = policy.execute(
+      () =>
+        new Promise<Response>((_resolve, reject) => {
+          rejectOlderCall = reject;
+        })
+    );
+
+    await assert.rejects(
+      policy.execute(() => Promise.reject(new Error("failure")))
+    );
+
+    let resolveProbe!: (response: Response) => void;
+    const probe = policy.execute(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveProbe = resolve;
+        })
+    );
+
+    rejectOlderCall(new Error("older failure"));
+    await assert.rejects(olderCall);
+    await assert.rejects(
+      policy.execute(() => Promise.resolve(mockResponse(200))),
+      (error: unknown) => error instanceof CircuitOpenError
+    );
+
+    resolveProbe(mockResponse(200));
+    await probe;
+  });
+
+  it("recovers when the half-open state callback throws", async () => {
+    let throwOnHalfOpen = true;
+    const policy = circuitBreaker({
+      halfOpenAfter: 0,
+      onStateChange: (state) => {
+        if (state === "half-open" && throwOnHalfOpen) {
+          throwOnHalfOpen = false;
+          throw new Error("callback failure");
+        }
+      },
+      threshold: 1,
+    });
+
+    await assert.rejects(
+      policy.execute(() => Promise.reject(new Error("failure")))
+    );
+    await assert.rejects(
+      policy.execute(() => Promise.resolve(mockResponse(200))),
+      { message: "callback failure" }
+    );
+
+    const response = await policy.execute(() =>
+      Promise.resolve(mockResponse(200))
+    );
+    assert.equal(response.status, 200);
+  });
+
+  it("stays closed when the closed state callback throws", async () => {
+    const policy = circuitBreaker({
+      halfOpenAfter: 0,
+      onStateChange: (state) => {
+        if (state === "closed") {
+          throw new Error("callback failure");
+        }
+      },
+      threshold: 3,
+    });
+
+    await repeat(3, () =>
+      assert.rejects(() =>
+        policy.execute(() => Promise.reject(new Error("failure")))
+      )
+    );
+    await assert.rejects(
+      policy.execute(() => Promise.resolve(mockResponse(200))),
+      { message: "callback failure" }
+    );
+
+    const response = await policy.execute(() =>
+      Promise.resolve(mockResponse(200))
+    );
+    assert.equal(response.status, 200);
+  });
+
   it("reopens if half-open probe fails", async () => {
     const states: CircuitState[] = [];
     const policy = circuitBreaker({

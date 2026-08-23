@@ -29,37 +29,55 @@ export function circuitBreaker(opts: CircuitBreakerOptions): Policy {
     }
   }
 
+  function startHalfOpenProbe(): void {
+    try {
+      setState("half-open");
+    } catch (error) {
+      state = "open";
+      throw error;
+    }
+  }
+
   return {
     async execute(fn: () => Promise<Response>): Promise<Response> {
+      let isHalfOpenProbe = false;
+
       if (state === "open") {
         const now = Date.now();
         if (now - openedAt >= halfOpenAfter) {
-          setState("half-open");
+          startHalfOpenProbe();
+          isHalfOpenProbe = true;
         } else {
           throw new CircuitOpenError();
         }
+      } else if (state === "half-open") {
+        throw new CircuitOpenError();
       }
 
+      let response: Response;
       try {
-        const response = await fn();
-        if (state === "half-open") {
-          failureCount = 0;
-          setState("closed");
-        } else {
-          failureCount = 0;
-        }
-        return response;
+        response = await fn();
       } catch (err) {
-        failureCount += 1;
-        if (state === "half-open") {
+        if (isHalfOpenProbe) {
           openedAt = Date.now();
           setState("open");
-        } else if (failureCount >= threshold) {
-          openedAt = Date.now();
-          setState("open");
+        } else if (state === "closed") {
+          failureCount += 1;
+          if (failureCount >= threshold) {
+            openedAt = Date.now();
+            setState("open");
+          }
         }
         throw err;
       }
+
+      if (isHalfOpenProbe) {
+        failureCount = 0;
+        setState("closed");
+      } else if (state === "closed") {
+        failureCount = 0;
+      }
+      return response;
     },
   };
 }

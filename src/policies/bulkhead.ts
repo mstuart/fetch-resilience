@@ -21,6 +21,10 @@ interface QueueEntry<T> {
 export function bulkhead(opts: BulkheadOptions): Policy {
   const { maxConcurrent, maxQueue = Number.POSITIVE_INFINITY } = opts;
 
+  if (!Number.isInteger(maxConcurrent) || maxConcurrent <= 0) {
+    throw new TypeError("maxConcurrent must be a positive integer");
+  }
+
   let running = 0;
   const queue: QueueEntry<Response>[] = [];
 

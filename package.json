@@ -21,13 +21,16 @@
     }
   },
   "main": "dist/index.js",
-  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "check": "ultracite check",
     "fix": "ultracite fix",
-    "test": "node --experimental-transform-types --test tests/*.test.ts",
+    "pretest": "tsc",
+    "test": "node --experimental-transform-types --test tests/*.test.ts tests/package-artifact.test.mjs",
     "test:build": "tsc && node --test dist/tests/*.test.js"
   },
   "devDependencies": {

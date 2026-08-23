@@ -30,7 +30,7 @@
     "check": "ultracite check",
     "fix": "ultracite fix",
     "pretest": "tsc",
-    "test": "node --experimental-transform-types --test tests/*.test.ts tests/package-artifact.test.mjs",
+    "test": "node --experimental-strip-types --test tests/*.test.ts tests/package-artifact.test.mjs",
     "test:build": "tsc && node --test dist/tests/*.test.js"
   },
   "devDependencies": {

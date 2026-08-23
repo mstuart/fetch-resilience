@@ -11,6 +11,13 @@ function delay(ms: number): Promise<void> {
 }
 
 describe("BulkheadPolicy", () => {
+  it("rejects a non-positive concurrency limit", () => {
+    assert.throws(() => bulkhead({ maxConcurrent: 0 }), {
+      message: "maxConcurrent must be a positive integer",
+      name: "TypeError",
+    });
+  });
+
   it("allows calls up to maxConcurrent", async () => {
     const policy = bulkhead({ maxConcurrent: 2 });
     const results = await Promise.all([

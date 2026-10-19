@@ -11,6 +11,18 @@ function delay(ms: number): Promise<void> {
 }
 
 describe("TimeoutPolicy", () => {
+  it("clears its timer when the operation throws synchronously", async (context) => {
+    const clear = context.mock.method(globalThis, "clearTimeout");
+    const policy = timeout({ ms: 10 });
+    await assert.rejects(
+      policy.execute(() => {
+        throw new Error("synchronous failure");
+      }),
+      { message: "synchronous failure" }
+    );
+    assert.equal(clear.mock.callCount(), 1);
+  });
+
   it("returns result if completed within timeout", async () => {
     const policy = timeout({ ms: 500 });
     const result = await policy.execute(() =>

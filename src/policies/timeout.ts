@@ -23,7 +23,8 @@ export function timeout(opts: TimeoutOptions): Policy {
           reject(new TimeoutError(ms));
         }, ms);
 
-        fn()
+        Promise.resolve()
+          .then(() => fn())
           .then((result) => {
             clearTimeout(timer);
             resolve(result);

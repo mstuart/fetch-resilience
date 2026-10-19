@@ -1,6 +1,7 @@
 import type { Policy } from "../types.ts";
 
 export interface RetryOptions {
+  /** Number of retries after the initial call. Must be a non-negative safe integer. */
   attempts: number;
   backoff?: "fixed" | "exponential" | "linear";
   delayMs?: number;
@@ -49,12 +50,18 @@ export function retry(opts: RetryOptions): Policy {
     retryOnError = true,
   } = opts;
 
+  if (!Number.isSafeInteger(attempts) || attempts < 0) {
+    throw new TypeError("attempts must be a non-negative safe integer");
+  }
+
   return {
     execute(fn: () => Promise<Response>): Promise<Response> {
       const executeAttempt = async (attempt: number): Promise<Response> => {
         try {
           const response = await fn();
           if (attempt < attempts && retryOn.includes(response.status)) {
+            // Cleanup failures must not change the retry budget or final response.
+            await response.body?.cancel().catch(() => undefined);
             const delay = computeDelay(attempt + 1, backoff, delayMs, jitter);
             await sleep(delay);
             return executeAttempt(attempt + 1);

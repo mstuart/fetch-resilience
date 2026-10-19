@@ -67,6 +67,42 @@ describe("RetryPolicy", () => {
     assert.equal(calls, 2);
   });
 
+  it("continues retries when response body cancellation never settles", async () => {
+    let calls = 0;
+    let cancellations = 0;
+    const discarded = new Response(
+      new ReadableStream({
+        cancel() {
+          cancellations += 1;
+          return new Promise<void>(() => undefined);
+        },
+      }),
+      { status: 503 }
+    );
+    const success = new Response("ok");
+    const result = retry({ attempts: 1, delayMs: 0 }).execute(() => {
+      calls += 1;
+      return Promise.resolve(calls === 1 ? discarded : success);
+    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const response = await Promise.race([
+        result,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("cleanup stalled retry")),
+            1000
+          );
+        }),
+      ]);
+      assert.equal(response, success);
+      assert.equal(calls, 2);
+      assert.equal(cancellations, 1);
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+
   it("returns immediately on success", async () => {
     const policy = retry({ attempts: 3 });
     let callCount = 0;

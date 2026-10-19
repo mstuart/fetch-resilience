@@ -60,8 +60,8 @@ export function retry(opts: RetryOptions): Policy {
         try {
           const response = await fn();
           if (attempt < attempts && retryOn.includes(response.status)) {
-            // Cleanup failures must not change the retry budget or final response.
-            await response.body?.cancel().catch(() => undefined);
+            // Cleanup must not stall retries or change their outcome.
+            response.body?.cancel().catch(() => undefined);
             const delay = computeDelay(attempt + 1, backoff, delayMs, jitter);
             await sleep(delay);
             return executeAttempt(attempt + 1);

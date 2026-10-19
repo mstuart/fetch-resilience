@@ -7,6 +7,102 @@ function mockResponse(status: number): Response {
 }
 
 describe("RetryPolicy", () => {
+  it("rejects retry counts that cannot bound execution", () => {
+    for (const attempts of [
+      -1,
+      0.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.MAX_SAFE_INTEGER + 1,
+    ]) {
+      assert.throws(() => retry({ attempts }), TypeError);
+    }
+  });
+
+  it("cancels discarded response bodies before the next attempt", async () => {
+    let cancelled = 0;
+    let calls = 0;
+    const discarded = new Response(
+      new ReadableStream({
+        cancel() {
+          cancelled += 1;
+        },
+      }),
+      { status: 503 }
+    );
+    const last = new Response("last response", { status: 503 });
+    const response = await retry({ attempts: 1, delayMs: 0 }).execute(() => {
+      calls += 1;
+      if (calls === 1) {
+        return Promise.resolve(discarded);
+      }
+      assert.equal(cancelled, 1);
+      return Promise.resolve(last);
+    });
+    assert.equal(response, last);
+    assert.equal(await response.text(), "last response");
+    assert.equal(calls, 2);
+  });
+
+  it("continues retries when response body cancellation rejects", async () => {
+    let calls = 0;
+    const discarded = new Response(
+      new ReadableStream({
+        cancel() {
+          return Promise.reject(new Error("cancel failed"));
+        },
+      }),
+      { status: 503 }
+    );
+    const success = new Response("ok");
+    const response = await retry({
+      attempts: 1,
+      delayMs: 0,
+      retryOnError: false,
+    }).execute(() => {
+      calls += 1;
+      return Promise.resolve(calls === 1 ? discarded : success);
+    });
+    assert.equal(response, success);
+    assert.equal(calls, 2);
+  });
+
+  it("continues retries when response body cancellation never settles", async () => {
+    let calls = 0;
+    let cancellations = 0;
+    const discarded = new Response(
+      new ReadableStream({
+        cancel() {
+          cancellations += 1;
+          return new Promise<void>(() => undefined);
+        },
+      }),
+      { status: 503 }
+    );
+    const success = new Response("ok");
+    const result = retry({ attempts: 1, delayMs: 0 }).execute(() => {
+      calls += 1;
+      return Promise.resolve(calls === 1 ? discarded : success);
+    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const response = await Promise.race([
+        result,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("cleanup stalled retry")),
+            1000
+          );
+        }),
+      ]);
+      assert.equal(response, success);
+      assert.equal(calls, 2);
+      assert.equal(cancellations, 1);
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+
   it("returns immediately on success", async () => {
     const policy = retry({ attempts: 3 });
     let callCount = 0;

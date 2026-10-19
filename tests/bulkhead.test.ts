@@ -11,6 +11,56 @@ function delay(ms: number): Promise<void> {
 }
 
 describe("BulkheadPolicy", () => {
+  it("releases a slot when the operation throws synchronously", async () => {
+    const policy = bulkhead({ maxConcurrent: 1, maxQueue: 0 });
+    const failure = new Error("synchronous failure");
+    await assert.rejects(
+      async () =>
+        policy.execute(() => {
+          throw failure;
+        }),
+      failure
+    );
+    const response = await policy.execute(() =>
+      Promise.resolve(mockResponse(200))
+    );
+    assert.equal(response.status, 200);
+  });
+
+  it("rejects a synchronous queued failure and continues the queue", async () => {
+    const policy = bulkhead({ maxConcurrent: 1 });
+    let release!: (response: Response) => void;
+    const first = policy.execute(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        })
+    );
+    await Promise.resolve();
+    const failure = new Error("queued failure");
+    const queued = assert.rejects(
+      policy.execute(() => {
+        throw failure;
+      }),
+      failure
+    );
+    const last = policy.execute(() => Promise.resolve(mockResponse(201)));
+    const settled = Promise.all([first, queued, last]);
+    release(mockResponse(200));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const results = await Promise.race([
+        settled,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => reject(new Error("queue stalled")), 1000);
+        }),
+      ]);
+      assert.equal(results[2].status, 201);
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+
   it("rejects a non-positive concurrency limit", () => {
     assert.throws(() => bulkhead({ maxConcurrent: 0 }), {
       message: "maxConcurrent must be a positive integer",

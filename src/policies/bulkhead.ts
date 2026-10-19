@@ -37,8 +37,8 @@ export function bulkhead(opts: BulkheadOptions): Policy {
       return;
     }
     running += 1;
-    entry
-      .fn()
+    Promise.resolve()
+      .then(() => entry.fn())
       .then((result) => {
         running -= 1;
         entry.resolve(result);
@@ -55,7 +55,8 @@ export function bulkhead(opts: BulkheadOptions): Policy {
     execute(fn: () => Promise<Response>): Promise<Response> {
       if (running < maxConcurrent) {
         running += 1;
-        return fn()
+        return Promise.resolve()
+          .then(() => fn())
           .then((result) => {
             running -= 1;
             tryRunNext();

@@ -27,6 +27,9 @@ export function timeout(opts: TimeoutOptions): Policy {
           .then(() => fn())
           .then((result) => {
             clearTimeout(timer);
+            if (controller.signal.aborted) {
+              return result.body?.cancel();
+            }
             resolve(result);
           })
           .catch((err) => {

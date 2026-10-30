@@ -66,3 +66,42 @@ describe("TimeoutPolicy", () => {
     assert.equal(result.status, 204);
   });
 });
+
+for (const cancellationFails of [false, true]) {
+  it(`cancels a late response (cancellation fails: ${cancellationFails})`, async (context) => {
+    context.mock.timers.enable({ apis: ["setTimeout"] });
+    let finish!: (response: Response) => void;
+    let cancelled = false;
+    const result = timeout({ ms: 10 }).execute(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        })
+    );
+    await Promise.resolve();
+    context.mock.timers.tick(10);
+    await assert.rejects(result, TimeoutError);
+    finish(
+      new Response(
+        new ReadableStream({
+          cancel() {
+            cancelled = true;
+            if (cancellationFails) {
+              throw new Error("cancellation failed");
+            }
+          },
+        })
+      )
+    );
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(cancelled, true);
+  });
+}
+
+it("leaves successful response bodies available to the caller", async () => {
+  const response = new Response("available");
+  const result = await timeout({ ms: 1000 }).execute(() =>
+    Promise.resolve(response)
+  );
+  assert.equal(await result.text(), "available");
+});

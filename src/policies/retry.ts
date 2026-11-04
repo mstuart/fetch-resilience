@@ -11,6 +11,7 @@ export interface RetryOptions {
 }
 
 const DEFAULT_RETRY_ON = [429, 500, 502, 503, 504];
+const maximumTimeout = 2_147_483_647;
 
 function computeDelay(
   attempt: number,
@@ -18,6 +19,9 @@ function computeDelay(
   delayMs: number,
   jitter: boolean
 ): number {
+  if (delayMs === 0) {
+    return 0;
+  }
   let delay: number;
   switch (backoff) {
     case "exponential":
@@ -33,7 +37,7 @@ function computeDelay(
   if (jitter) {
     delay += Math.random() * delayMs;
   }
-  return delay;
+  return Math.min(delay, maximumTimeout);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -52,6 +56,12 @@ export function retry(opts: RetryOptions): Policy {
 
   if (!Number.isSafeInteger(attempts) || attempts < 0) {
     throw new TypeError("attempts must be a non-negative safe integer");
+  }
+  if (!Number.isFinite(delayMs) || delayMs < 0) {
+    throw new TypeError("delayMs must be a non-negative finite number");
+  }
+  if (delayMs > maximumTimeout) {
+    throw new RangeError(`delayMs must be at most ${maximumTimeout}`);
   }
 
   return {

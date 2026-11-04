@@ -74,3 +74,17 @@ test("npm pack creates an installable runtime-only package", async () => {
     await rm(temporaryDirectory, { force: true, recursive: true });
   }
 });
+
+test("published declarations compose non-HTTP result policies", async () => {
+  await execFileAsync(process.execPath, [
+    join(process.cwd(), "node_modules/typescript/bin/tsc"),
+    "--noEmit",
+    "--strict",
+    "--skipLibCheck",
+    "--module",
+    "NodeNext",
+    "--target",
+    "ES2022",
+    "tests/generic-policies.fixture.ts",
+  ]);
+});

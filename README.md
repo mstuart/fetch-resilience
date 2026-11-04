@@ -77,6 +77,8 @@ const policy = retry({
 const result = await policy.execute(() => fetch('https://api.example.com'));
 ```
 
+`delayMs` must be finite, non-negative, and at most 2,147,483,647 ms. Computed backoff is capped at that timer maximum to prevent overflow into an immediate retry.
+
 **Backoff strategies:**
 - `fixed` — always waits `delayMs`
 - `linear` — waits `delayMs * attempt` (100, 200, 300...)
@@ -85,7 +87,7 @@ const result = await policy.execute(() => fetch('https://api.example.com'));
 
 ### `timeout(options)`
 
-Aborts the operation after a deadline using `AbortController`.
+Aborts the operation after a deadline using `AbortController`. `ms` must be finite, non-negative, and at most 2,147,483,647.
 
 ```typescript
 import { timeout, TimeoutError } from 'fetch-resilience';
@@ -102,6 +104,8 @@ try {
 ```
 
 ### `circuitBreaker(options)`
+
+`threshold` must be a positive safe integer, and `halfOpenAfter` must be finite and non-negative.
 
 Implements the circuit breaker pattern with three states:
 
@@ -131,7 +135,7 @@ try {
 
 ### `bulkhead(options)`
 
-Limits concurrent executions. Excess calls are queued (or rejected if the queue is full).
+Limits concurrent executions. Excess calls are queued (or rejected if the queue is full). `maxQueue` must be a non-negative integer or `Infinity` (the default).
 
 ```typescript
 import { bulkhead, BulkheadRejectedError } from 'fetch-resilience';

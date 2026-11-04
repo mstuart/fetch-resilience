@@ -18,15 +18,22 @@ interface QueueEntry<T> {
   resolve: (value: T) => void;
 }
 
-export function bulkhead(opts: BulkheadOptions): Policy {
+export function bulkhead<T = Response>(opts: BulkheadOptions): Policy<T> {
   const { maxConcurrent, maxQueue = Number.POSITIVE_INFINITY } = opts;
 
   if (!Number.isInteger(maxConcurrent) || maxConcurrent <= 0) {
     throw new TypeError("maxConcurrent must be a positive integer");
   }
 
+  if (
+    maxQueue !== Number.POSITIVE_INFINITY &&
+    (!Number.isInteger(maxQueue) || maxQueue < 0)
+  ) {
+    throw new TypeError("maxQueue must be a non-negative integer or Infinity");
+  }
+
   let running = 0;
-  const queue: QueueEntry<Response>[] = [];
+  const queue: QueueEntry<T>[] = [];
 
   function tryRunNext(): void {
     if (queue.length === 0 || running >= maxConcurrent) {
@@ -52,7 +59,7 @@ export function bulkhead(opts: BulkheadOptions): Policy {
   }
 
   return {
-    execute(fn: () => Promise<Response>): Promise<Response> {
+    execute(fn: () => Promise<T>): Promise<T> {
       if (running < maxConcurrent) {
         running += 1;
         return Promise.resolve()
@@ -73,7 +80,7 @@ export function bulkhead(opts: BulkheadOptions): Policy {
         return Promise.reject(new BulkheadRejectedError());
       }
 
-      return new Promise<Response>((resolve, reject) => {
+      return new Promise<T>((resolve, reject) => {
         queue.push({ fn, reject, resolve });
       });
     },

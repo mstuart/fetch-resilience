@@ -15,8 +15,17 @@ export class CircuitOpenError extends Error {
   }
 }
 
-export function circuitBreaker(opts: CircuitBreakerOptions): Policy {
+export function circuitBreaker<T = Response>(
+  opts: CircuitBreakerOptions
+): Policy<T> {
   const { threshold, halfOpenAfter, onStateChange } = opts;
+
+  if (!Number.isSafeInteger(threshold) || threshold <= 0) {
+    throw new TypeError("threshold must be a positive safe integer");
+  }
+  if (!Number.isFinite(halfOpenAfter) || halfOpenAfter < 0) {
+    throw new TypeError("halfOpenAfter must be a non-negative finite number");
+  }
 
   let state: CircuitState = "closed";
   let failureCount = 0;
@@ -39,7 +48,7 @@ export function circuitBreaker(opts: CircuitBreakerOptions): Policy {
   }
 
   return {
-    async execute(fn: () => Promise<Response>): Promise<Response> {
+    async execute(fn: () => Promise<T>): Promise<T> {
       let isHalfOpenProbe = false;
 
       if (state === "open") {
@@ -54,7 +63,7 @@ export function circuitBreaker(opts: CircuitBreakerOptions): Policy {
         throw new CircuitOpenError();
       }
 
-      let response: Response;
+      let response: T;
       try {
         response = await fn();
       } catch (err) {
